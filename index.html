@@ -49,10 +49,8 @@
         <iframe id="tv-player" src="" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
     </div>
 
-    <!-- 1. Inject a clean RSS JSON script engine to handle the links safely -->
-    <script src="https://jsdelivr.net"></script>
-
     <script>
+        // Completely removed external JS library imports to eliminate connection errors
         const creators = [
             { name: "BUM", channelId: "UC9uSg7S86t6P_iSg8V7DcbA" },          
             { name: "DONUT", channelId: "UC6Jxa_K73MMwZ6M9wXwK2mw" },        
@@ -62,7 +60,6 @@
         ];
 
         let selectedCreatorIndex = 0;
-        const parser = new RSSParser();
 
         function initApp() {
             const list = document.getElementById("creators");
@@ -90,10 +87,8 @@
             document.getElementById("feed-title").innerText = creators[index].name + " Feed";
             feedContainer.innerHTML = '<div class="loading-spinner">Fetching RSS Feed Stream...</div>';
 
-            // 2. Uses a clean API loop structure that strips text parameters safely
             const targetFeed = "https://rss2json.com" + encodeURIComponent("https://youtube.com" + channelId);
 
-            // Fetch clean structured JSON instead of messy XML layouts
             fetch(targetFeed)
                 .then(res => res.json())
                 .then(data => {
@@ -105,13 +100,20 @@
                     feedContainer.innerHTML = "";
 
                     data.items.forEach((item, i) => {
-                        // Extract the video ID directly from the absolute youtube link address
                         const videoUrl = item.link;
-                        const videoId = videoUrl.split("v=")[1] || videoUrl.substring(videoUrl.lastIndexOf('/') + 1);
+                        let videoId = null;
+
+                        // Bulletproof native browser URL processing mechanics
+                        try {
+                            const urlObj = new URL(videoUrl);
+                            const params = new URLSearchParams(urlObj.search);
+                            videoId = params.get("v");
+                        } catch (e) {
+                            console.error("URL processing failure");
+                        }
 
                         if (!videoId) return;
 
-                        // Formatting a crisp publication date string
                         const dateObj = new Date(item.pubDate);
                         const cleanDate = dateObj.toLocaleDateString(undefined, {month: 'short', day: 'numeric', year: 'numeric'});
                         const thumbnail = "https://youtube.com" + videoId + "/mqdefault.jpg";
@@ -127,7 +129,6 @@
                         `;
                         feedContainer.appendChild(li);
 
-                        // Automatically launch the top latest video on initial feed load
                         if (i === 0) {
                             loadVideo(videoId);
                         }
@@ -135,7 +136,7 @@
                 })
                 .catch(err => {
                     console.error(err);
-                    feedContainer.innerHTML = '<div class="no-video-msg">Failed to grab server feeds. Check internet connection.</div>';
+                    feedContainer.innerHTML = '<div class="no-video-msg">Failed to grab server feeds. Check connection or host on GitHub.</div>';
                 });
         }
 
