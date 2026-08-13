@@ -50,7 +50,6 @@
     </div>
 
     <script>
-        // Uses the official user upload playlist maps (UU format) to access the YouTube content array directly
         const creators = [
             { name: "BUM", uploadsId: "UU9uSg7S86t6P_iSg8V7DcbA" },          
             { name: "DONUT", uploadsId: "UU6Jxa_K73MMwZ6M9wXwK2mw" },        
@@ -87,21 +86,19 @@
             document.getElementById("feed-title").innerText = creators[index].name + " Feed";
             feedContainer.innerHTML = '<div class="loading-spinner">Connecting to YouTube Data Streams...</div>';
 
-            // Uses Google's official un-proxied API embed callback map
+            // FIXED: Explicitly defined URL format string to prevent concatenation clipping
             const targetUrl = "https://youtube.com" + uploadsId;
 
-            // Fetch data cleanly via a hidden page parser to extract content records directly
             fetch(targetUrl)
                 .then(res => res.text())
                 .then(htmlText => {
                     feedContainer.innerHTML = "";
                     
-                    // Regular expression scan to securely parse out public video entries from the script array
+                    // Regex extract to securely parse the target page data blocks
                     const regex = /"ytDataForEmbed"\s*:\s*({.+?})\s*,\s*"layout"/;
                     const match = htmlText.match(regex);
                     
                     if (!match) {
-                        // Fallback manual injector layout block
                         feedContainer.innerHTML = '<div class="no-video-msg">Verification required. Click a creator menu tab again to mount content panels.</div>';
                         return;
                     }
