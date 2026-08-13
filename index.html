@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom TubeTV Dashboard</title>
+    <style>
+        body {
+            background-color: #121212;
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar Channel Guide */
+        .sidebar {
+            width: 320px;
+            background-color: #1a1a1a;
+            border-right: 2px solid #673ab7;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 4px 0 10px rgba(0,0,0,0.5);
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            background-color: #673ab7;
+            font-size: 1.2rem;
+            font-weight: bold;
+            letter-spacing: 1px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+
+        .channel-list {
+            flex: 1;
+            overflow-y: auto;
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .channel-item {
+            padding: 15px 20px;
+            border-bottom: 1px solid #2a2a2a;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+        }
+
+        .channel-item:hover {
+            background-color: #261c38;
+        }
+
+        .channel-item.active {
+            background-color: #311b92;
+            border-left: 5px solid #673ab7;
+        }
+
+        .channel-number {
+            font-size: 0.9rem;
+            color: #673ab7;
+            font-weight: bold;
+            margin-right: 15px;
+            width: 25px;
+        }
+
+        .channel-name {
+            font-size: 1.05rem;
+            font-weight: 500;
+        }
+
+        /* Main TV Viewer Area */
+        .main-viewer {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: #121212;
+        }
+
+        .video-container {
+            flex: 1;
+            position: relative;
+            background-color: #000;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        /* Control / Info Bar */
+        .info-bar {
+            padding: 20px;
+            background-color: #161616;
+            border-top: 2px solid #673ab7;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .now-playing-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 5px;
+        }
+
+        .now-playing-channel {
+            font-size: 0.95rem;
+            color: #b388ff;
+        }
+
+        .tv-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            background-color: #673ab7;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn:hover {
+            background-color: #5e35b1;
+        }
+
+        .btn-secondary {
+            background-color: #2a2a2a;
+            border: 1px solid #444;
+        }
+
+        .btn-secondary:hover {
+            background-color: #333;
+        }
+
+        /* Custom Scrollbar for Sidebar */
+        .channel-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        .channel-list::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+        .channel-list::-webkit-scrollbar-thumb {
+            background: #673ab7;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar Channel Guide -->
+    <div class="sidebar">
+        <div class="sidebar-header">⚙️ Custom TubeTV Guide</div>
+        <ul class="channel-list" id="channelList">
+            <!-- Channels populated via JavaScript -->
+        </ul>
+    </div>
+
+    <!-- Main TV Player -->
+    <div class="main-viewer">
+        <div class="video-container">
+            <iframe 
+  		id="tv-player"
+  		src="https://www.youtube-nocookie.com" 
+  		frameborder="0" 
+  		allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+  		allowfullscreen
+  		referrerpolicy="strict-origin-when-cross-origin">
+	</iframe>
+        </div>
+        <div class="info-bar">
+            <div>
+                <div class="now-playing-title" id="nowPlayingTitle">Loading Live Stream...</div>
+                <div class="now-playing-channel" id="nowPlayingChannel">Channel</div>
+            </div>
+            <div class="tv-controls">
+                <button class="btn btn-secondary" onclick="changeChannel(-1)">⏮️ Prev Channel</button>
+                <button class="btn btn-secondary" onclick="changeChannel(1)">Next Channel ⏭️</button>
+                <button class="btn" onclick="refreshChannel()">🔄 Surf Channel Videos</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Define your channel list with their Content Creator IDs or live/embed queries.
+        // For standard channels, using their latest uploads playlist or embeds works best.
+        const channels = [
+            { id: 1, name: "BUM", embedUrl: "https://www.youtube.com/embed?listType=user_uploads&list=BUM" },
+            { id: 2, name: "DONUT", embedUrl: "https://www.youtube.com/embed?listType=user_uploads&list=DonutMedia" },
+            { id: 3, name: "Banks Power", embedUrl: "https://www.youtube.com/embed?listType=user_uploads&list=bankspower" },
+            { id: 4, name: "Westen Champlin", embedUrl: "https://www.youtube.com/embed?listType=user_uploads&list=WestenChamplin" },
+            { id: 5, name: "POWERNATION", embedUrl: "https://www.youtube.com/embed?listType=user_uploads&list=PowerNationTV" }
+        ];
+
+        let currentChannelIndex = 0;
+
+        function initTV() {
+            const listContainer = document.getElementById('channelList');
+            listContainer.innerHTML = '';
+
+            channels.forEach((channel, index) => {
+                const li = document.createElement('li');
+                li.className = `channel-item ${index === currentChannelIndex ? 'active' : ''}`;
+                li.onclick = () => selectChannel(index);
+
+                li.innerHTML = `
+                    <span class="channel-number">CH ${channel.id}</span>
+                    <span class="channel-name">${channel.name}</span>
+                `;
+                listContainer.appendChild(li);
+            });
+
+            loadChannel(currentChannelIndex);
+        }
+
+        function loadChannel(index) {
+            currentChannelIndex = index;
+            const channel = channels[index];
+            
+            // Update Active Class in Sidebar
+            const items = document.querySelectorAll('.channel-item');
+            items.forEach((item, idx) => {
+                if(idx === index) item.classList.add('active');
+                else item.classList.remove('active');
+            });
+
+            // Update Player and Info Text
+            document.getElementById('tvPlayer').src = channel.embedUrl;
+            document.getElementById('nowPlayingTitle').innerText = `Streaming Latest Content`;
+            document.getElementById('nowPlayingChannel').innerText = `${channel.name} Network`;
+        }
+
+        function selectChannel(index) {
+            loadChannel(index);
+        }
+
+        function changeChannel(direction) {
+            let newIndex = currentChannelIndex + direction;
+            if (newIndex >= channels.length) newIndex = 0;
+            if (newIndex < 0) newIndex = channels.length - 1;
+            loadChannel(newIndex);
+        }
+
+        function refreshChannel() {
+            const iframe = document.getElementById('tvPlayer');
+            const currentSrc = iframe.src;
+            iframe.src = '';
+            setTimeout(() => { iframe.src = currentSrc; }, 100);
+        }
+
+        // Boot up the TV
+        window.onload = initTV;
+    </script>
+</body>
+</html>
