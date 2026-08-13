@@ -72,20 +72,20 @@
         }
 
         function playChannel(index) {
-            currentChannelIndex = index;
-            
-            const buttons = document.querySelectorAll(".channel-btn");
-            buttons.forEach((btn, idx) => {
-                if(idx === index) btn.classList.add("active");
-                else btn.classList.remove("active");
-            });
+    		currentChannelIndex = index;
+    
+    		var buttons = document.querySelectorAll(".channel-btn");
+    		buttons.forEach(function(btn, idx) {
+        		if(idx === index) btn.classList.add("active");
+        		else btn.classList.remove("active");
+    		});
 
-            const player = document.getElementById("tv-player");
-            const vId = tvChannels[index].videoId;
-            
-            // Core params: autoplay=1 (start immediately), mute=1 (forces browser to allow autoplay)
-            player.src = `https://youtube.com{vId}?autoplay=1&mute=1&modestbranding=1&rel=0&iv_load_policy=3`;
-        }
+    		var player = document.getElementById("tv-player");
+    		var vId = tvChannels[index].videoId;
+    
+    		// Use standard quotes and a + sign to combine the video ID
+    		player.src = "https://www.youtube-nocookie.com/embed/" + vId + "?autoplay=1&mute=1&modestbranding=1&rel=0&iv_load_policy=3";
+	}
 
         function selectChannel(index) {
             playChannel(index);
