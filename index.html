@@ -10,7 +10,7 @@
         
         #sidebar { width: 280px; background-color: #130f22; border-right: 2px solid #2d1f47; display: flex; flex-direction: column; }
         .header { padding: 20px; font-size: 18px; font-weight: bold; text-align: center; border-bottom: 2px solid #2d1f47; letter-spacing: 1px; color: #a855f7; }
-        .creator-list { padding: 10px; list-style: none; display: flex; flex-direction: column; gap: 8px; border-bottom: 2px solid #2d1f47;}
+        .creator-list { padding: 10px; list-style: none; display: flex; flex-direction: column; gap: 8px; border-bottom: 2px solid #2d1f47; overflow-y: auto;}
         .creator-btn { width: 100%; padding: 12px 15px; background: #1c1630; border: 1px solid #2d1f47; color: #aaa; text-align: left; font-size: 14px; cursor: pointer; border-radius: 6px; transition: all 0.2s; font-weight: bold; }
         .creator-btn:hover { background-color: #2d1f47; color: #fff; }
         .creator-btn.active { background-color: #a855f7; color: #fff; border-color: #c084fc; }
@@ -50,12 +50,13 @@
     </div>
 
     <script>
+        // List of channel configurations with standard RSS Channel IDs
         const creators = [
-            { name: "BUM", uploadsId: "UU9uSg7S86t6P_iSg8V7DcbA" },          
-            { name: "DONUT", uploadsId: "UU6Jxa_K73MMwZ6M9wXwK2mw" },        
-            { name: "Banks Power", uploadsId: "UUH9p97gXgP-eX_Z_oV_h81g" },  
-            { name: "Westen Champlin", uploadsId: "UUmEunD7Z_p_nU9fGxFep3vQ" }, 
-            { name: "POWERNATION", uploadsId: "UUk7I7p8WByV6vK69SgG1_9A" }   
+            { name: "BUM", channelId: "UC9uSg7S86t6P_iSg8V7DcbA" },          
+            { name: "DONUT", channelId: "UC6Jxa_K73MMwZ6M9wXwK2mw" },        
+            { name: "Banks Power", channelId: "UCs50EmjtJyNLDcgTGSVNvcQ" },  
+            { name: "Westen Champlin", channelId: "UCmEunD7Z_p_nU9fGxFep3vQ" }, 
+            { name: "POWERNATION", channelId: "UCk7I7p8WByV6vK69SgG1_9A" }   
         ];
 
         let selectedCreatorIndex = 0;
@@ -65,7 +66,7 @@
             list.innerHTML = "";
             creators.forEach((creator, idx) => {
                 const li = document.createElement("li");
-                li.innerHTML = '<button class="creator-btn ' + (idx === selectedCreatorIndex ? 'active' : '') + '" onclick="selectCreator(' + idx + ')">' + creator.name + '</button>';
+                li.innerHTML = `<button class="creator-btn ${idx === selectedCreatorIndex ? 'active' : ''}" onclick="selectCreator(${idx})">${creator.name}</button>`;
                 list.appendChild(li);
             });
             loadChannelFeed(selectedCreatorIndex);
@@ -81,40 +82,38 @@
         }
 
         function loadChannelFeed(index) {
-            const uploadsId = creators[index].uploadsId;
+            const channelId = creators[index].channelId;
             const feedContainer = document.getElementById("video-feed");
             document.getElementById("feed-title").innerText = creators[index].name + " Feed";
             feedContainer.innerHTML = '<div class="loading-spinner">Connecting to YouTube Data Streams...</div>';
 
-            // FIXED: Explicitly defined URL format string to prevent concatenation clipping
-            const targetUrl = "https://youtube.com/" + uploadsId;
+            // Uses corsproxy.io to mask the request so GitHub Pages can bypass the CORS block
+            const baseTarget = `https://youtube.com{channelId}`;
+            const proxiedUrl = `https://corsproxy.io{encodeURIComponent(baseTarget)}`;
 
-            fetch(targetUrl)
+            fetch(proxiedUrl)
                 .then(res => res.text())
-                .then(htmlText => {
+                .then(xmlText => {
                     feedContainer.innerHTML = "";
                     
-                    // Regex extract to securely parse the target page data blocks
-                    const regex = /"ytDataForEmbed"\s*:\s*({.+?})\s*,\s*"layout"/;
-                    const match = htmlText.match(regex);
-                    
-                    if (!match) {
-                        feedContainer.innerHTML = '<div class="no-video-msg">Verification required. Click a creator menu tab again to mount content panels.</div>';
-                        return;
-                    }
+                    // Natively parses the raw RSS XML directly inside the browser
+                    const parser = new DOMParser();
+                    const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+                    const entries = xmlDoc.getElementsByTagName("entry");
 
-                    const jsonData = JSON.parse(match[1]);
-                    const videoList = jsonData.videoListRenderer.videos;
-
-                    if (!videoList || videoList.length === 0) {
+                    if (!entries || entries.length === 0) {
                         feedContainer.innerHTML = '<div class="no-video-msg">No videos found.</div>';
                         return;
                     }
 
-                    videoList.forEach((video, i) => {
-                        const videoId = video.videoId;
-                        const title = video.title;
-                        const thumbnail = "https://youtube.com/" + videoId + "/mqdefault.jpg";
+                    Array.from(entries).forEach((entry, i) => {
+                        const videoId = entry.getElementsByTagName("yt:videoId")[0]?.textContent;
+                        const title = entry.getElementsByTagName("title")[0]?.textContent;
+                        const published = entry.getElementsByTagName("published")[0]?.textContent;
+                        const dateStr = published ? new Date(published).toLocaleDateString() : "Active";
+                        const thumbnail = `https://youtube.com{videoId}/mqdefault.jpg`;
+
+                        if (!videoId) return;
 
                         const li = document.createElement("li");
                         li.className = "video-item";
@@ -123,10 +122,11 @@
                         li.innerHTML = `
                             <div class="video-thumb" style="background-image: url('${thumbnail}');"></div>
                             <div class="video-title">${title}</div>
-                            <div class="video-date">📺 Active Stream</div>
+                            <div class="video-date">📅 ${dateStr}</div>
                         `;
                         feedContainer.appendChild(li);
 
+                        // Autoplay the top video immediately upon switching channels
                         if (i === 0) {
                             loadVideo(videoId);
                         }
@@ -134,7 +134,7 @@
                 })
                 .catch(err => {
                     console.error(err);
-                    feedContainer.innerHTML = '<div class="no-video-msg">Feed blocked. Please launch in an Incognito Tab or deploy to GitHub Pages.</div>';
+                    feedContainer.innerHTML = '<div class="no-video-msg">Feed blocked. Proxy may be temporarily offline.</div>';
                 });
         }
 
@@ -145,9 +145,10 @@
             if (itemElement) itemElement.classList.add("active");
 
             const player = document.getElementById("tv-player");
-            player.src = "https://youtube.com/" + videoId + "?autoplay=1&modestbranding=1&rel=0";
+            player.src = `https://youtube.com{videoId}?autoplay=1`;
         }
 
+        // Initialize UI engine
         initApp();
     </script>
 </body>
