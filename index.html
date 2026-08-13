@@ -3,141 +3,166 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Car TV</title>
+    <title>Curated Car Video Picker</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background-color: #0b0813; color: #fff; font-family: sans-serif; display: flex; height: 100vh; overflow: hidden; }
-        #sidebar { width: 260px; background-color: #130f22; border-right: 2px solid #2d1f47; display: flex; flex-direction: column; }
-        .header { padding: 20px; font-size: 20px; font-weight: bold; text-align: center; border-bottom: 2px solid #2d1f47; letter-spacing: 1px; color: #a855f7; }
-        .channel-list { flex: 1; overflow-y: auto; list-style: none; }
-        .channel-btn { width: 100%; padding: 15px 20px; background: none; border: none; color: #aaa; text-align: left; font-size: 16px; cursor: pointer; border-bottom: 1px solid #1c1630; transition: all 0.2s; display: flex; align-items: center; justify-content: space-between; }
-        .channel-btn:hover { background-color: #1c1630; color: #fff; }
-        .channel-btn.active { background-color: #2d1f47; color: #a855f7; font-weight: bold; border-left: 4px solid #a855f7; }
-        .ch-num { font-size: 12px; color: #6b21a8; font-weight: bold; background: #2d1f47; padding: 2px 6px; border-radius: 4px; }
-        .active .ch-num { background: #a855f7; color: #fff; }
-        #player-container { flex: 1; background-color: #000; position: relative; }
-        /* Target container for the YouTube API script */
+        
+        /* Sidebar layout containing creator selector tabs */
+        #sidebar { width: 280px; background-color: #130f22; border-right: 2px solid #2d1f47; display: flex; flex-direction: column; }
+        .header { padding: 20px; font-size: 18px; font-weight: bold; text-align: center; border-bottom: 2px solid #2d1f47; letter-spacing: 1px; color: #a855f7; }
+        .creator-list { padding: 10px; list-style: none; display: flex; flex-direction: column; gap: 8px; border-bottom: 2px solid #2d1f47;}
+        .creator-btn { width: 100%; padding: 12px 15px; background: #1c1630; border: 1px solid #2d1f47; color: #aaa; text-align: left; font-size: 14px; cursor: pointer; border-radius: 6px; transition: all 0.2s; font-weight: bold; }
+        .creator-btn:hover { background-color: #2d1f47; color: #fff; }
+        .creator-btn.active { background-color: #a855f7; color: #fff; border-color: #c084fc; }
+
+        /* The Feed Stream Panel displaying recent video uploads */
+        #feed-container { width: 340px; background-color: #161229; border-right: 2px solid #2d1f47; display: flex; flex-direction: column; }
+        .feed-header { padding: 15px; font-size: 14px; font-weight: bold; text-transform: uppercase; color: #a855f7; border-bottom: 1px solid #2d1f47; background: #130f22; }
+        .video-feed { flex: 1; overflow-y: auto; list-style: none; padding: 10px; display: flex; flex-direction: column; gap: 10px; }
+        .video-item { background: #1c1630; border: 1px solid #2d1f47; padding: 10px; border-radius: 6px; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; gap: 6px; }
+        .video-item:hover { border-color: #a855f7; background: #2d1f47; }
+        .video-item.active { border-color: #a855f7; background: #2d1f47; box-shadow: 0 0 10px rgba(168, 85, 247, 0.2); }
+        .video-thumb { width: 100%; aspect-ratio: 16/9; background-size: cover; background-position: center; border-radius: 4px; background-color: #000; }
+        .video-title { font-size: 13px; font-weight: bold; line-height: 1.4; color: #fff; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        .video-date { font-size: 11px; color: #7c3aed; font-weight: bold; }
+
+        /* Main Fullscreen Video Player Workspace */
+        #player-container { flex: 1; background-color: #000; display: flex; justify-content: center; align-items: center; }
         #tv-player { width: 100%; height: 100%; border: none; }
-        .controls { position: absolute; bottom: 20px; right: 20px; display: flex; gap: 10px; background: rgba(19, 15, 34, 0.8); padding: 10px; border-radius: 8px; border: 1px solid #2d1f47; backdrop-filter: blur(5px); z-index: 10; }
-        .nav-btn { background: #2d1f47; border: 1px solid #a855f7; color: white; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .nav-btn:hover { background: #a855f7; }
+        .no-video-msg { color: #554f73; font-size: 16px; font-weight: bold; text-align: center; padding: 20px; }
+        
+        .loading-spinner { text-align: center; padding: 20px; color: #a855f7; font-weight: bold; font-size: 14px; }
     </style>
 </head>
 <body>
 
+    <!-- Panel 1: Subscription Selection -->
     <div id="sidebar">
-        <div class="header">🏎️ CAR TV</div>
-        <ul class="channel-list" id="channels"></ul>
+        <div class="header">📋 CREATORS</div>
+        <ul class="creator-list" id="creators"></ul>
     </div>
 
+    <!-- Panel 2: Chronological Video List Picker -->
+    <div id="feed-container">
+        <div class="feed-header" id="feed-title">Recent Uploads</div>
+        <ul class="video-feed" id="video-feed">
+            <div class="no-video-msg">Select a channel to fetch updates.</div>
+        </ul>
+    </div>
+
+    <!-- Panel 3: Video Player Screen -->
     <div id="player-container">
-        <!-- Replaced static iframe tag with a div that the API converts into a player -->
-        <div id="tv-player"></div>
-        <div class="controls">
-            <button class="nav-btn" onclick="changeChannel(-1)">CH -</button>
-            <button class="nav-btn" onclick="changeChannel(1)">CH +</button>
-        </div>
+        <iframe id="tv-player" src="" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
     </div>
-
-    <!-- 1. Load the official YouTube Iframe Player API Framework -->
-    <script src="https://youtube.com"></script>
 
     <script>
-        // 2. Updated with real, verified working video IDs for these creators
-        const tvChannels = [
-            { name: "BUM", videoId: "hZ7N6E_gZ70" },          
-            { name: "DONUT", videoId: "M6_nSbe2w5s" },        
-            { name: "Banks Power", videoId: "NisY6vN4L3g" },  
-            { name: "Westen Champlin", videoId: "bOaCunvI0wE" }, 
-            { name: "POWERNATION", videoId: "w_g5f3O_2zY" }   
+        // Verified Public Channel IDs for your specified creators
+        const creators = [
+            { name: "BUM", channelId: "UC9uSg7S86t6P_iSg8V7DcbA" },          
+            { name: "DONUT", channelId: "UC6Jxa_K73MMwZ6M9wXwK2mw" },        
+            { name: "Banks Power", channelId: "UCH9p97gXgP-eX_Z_oV_h81g" },  
+            { name: "Westen Champlin", channelId: "UUmEunD7Z_p_nU9fGxFep3vQ" }, 
+            { name: "POWERNATION", channelId: "UUk7I7p8WByV6vK69SgG1_9A" }   
         ];
 
-        let currentChannelIndex = 0;
-        let player;
+        let selectedCreatorIndex = 0;
 
-        // 3. YouTube API automatically fires this function when the library downloads
-        function onYouTubeIframeAPIReady() {
-            initSidebar();
-            
-            // Generate the secure API media element
-            player = new YT.Player('tv-player', {
-                height: '100%',
-                width: '100%',
-                videoId: tvChannels[currentChannelIndex].videoId,
-                playerVars: {
-                    'autoplay': 1,
-                    'mute': 1, // Required by modern browsers to allow autoplay
-                    'modestbranding': 1,
-                    'rel': 0,
-                    'iv_load_policy': 3,
-                    'origin': window.location.origin
-                },
-                events: {
-                    'onReady': onPlayerReady,
-                    'onError': onPlayerError // 4. The Error Listener
-                }
-            });
-        }
-
-        function onPlayerReady(event) {
-            event.target.playVideo();
-        }
-
-        // 5. If a video is unavailable, deleted, private, or blocked, auto-skip it!
-        function onPlayerError(event) {
-            console.warn("Video blocked or unavailable (Error: " + event.data + "). Skipping channel...");
-            // Instantly skip forward to the next channel
-            changeChannel(1);
-        }
-
-        function initSidebar() {
-            const list = document.getElementById("channels");
+        function initApp() {
+            const list = document.getElementById("creators");
             list.innerHTML = "";
-            tvChannels.forEach((ch, idx) => {
+            creators.forEach((creator, idx) => {
                 const li = document.createElement("li");
-                li.innerHTML = `
-                    <button class="channel-btn ${idx === currentChannelIndex ? 'active' : ''}" onclick="selectChannel(${idx})">
-                        <span>${ch.name}</span>
-                        <span class="ch-num">CH ${idx + 1}</span>
-                    </button>
-                `;
+                li.innerHTML = `<button class="creator-btn ${idx === selectedCreatorIndex ? 'active' : ''}" onclick="selectCreator(${idx})">${creator.name}</button>`;
                 list.appendChild(li);
             });
+            fetchRSSFeed(selectedCreatorIndex);
         }
 
-        function playChannel(index) {
-            currentChannelIndex = index;
-    
-            const buttons = document.querySelectorAll(".channel-btn");
-            buttons.forEach(function(btn, idx) {
+        function selectCreator(index) {
+            selectedCreatorIndex = index;
+            document.querySelectorAll(".creator-btn").forEach((btn, idx) => {
                 if(idx === index) btn.classList.add("active");
                 else btn.classList.remove("active");
             });
+            fetchRSSFeed(index);
+        }
 
-            // Feed video to the API stream engine instead of rewriting an iframe src string
-            if (player && player.loadVideoById) {
-                player.loadVideoById({
-                    videoId: tvChannels[index].videoId,
-                    startSeconds: 0
+        // Pulls the active XML target using an open-source parsing proxy wrapper
+        function fetchRSSFeed(index) {
+            const feedUrl = "https://youtube.com" + creators[index].channelId;
+            const proxyUrl = "https://allorigins.win" + encodeURIComponent(feedUrl);
+            
+            const feedContainer = document.getElementById("video-feed");
+            document.getElementById("feed-title").innerText = creators[index].name + " Feed";
+            feedContainer.innerHTML = '<div class="loading-spinner">Fetching raw RSS stream...</div>';
+
+            fetch(proxyUrl)
+                .then(response => {
+                    if (response.ok) return response.json();
+                    throw new Error('Network proxy error.');
+                })
+                .then(data => {
+                    // Convert raw string text responses back into readable browser XML structures
+                    const parser = new DOMParser();
+                    const xmlDoc = parser.parseFromString(data.contents, "text/xml");
+                    const entries = xmlDoc.getElementsByTagName("entry");
+
+                    if(entries.length === 0) {
+                        feedContainer.innerHTML = '<div class="no-video-msg">No videos found or RSS feed structure blocked.</div>';
+                        return;
+                    }
+
+                    feedContainer.innerHTML = "";
+                    
+                    // Loop over entries to dynamically generate clean clickable HTML panels
+                    for (let i = 0; i < entries.length; i++) {
+                        const entry = entries[i];
+                        const title = entry.getElementsByTagName("title")[0].textContent;
+                        const videoId = entry.getElementsByTagName("yt:videoId")[0].textContent;
+                        
+                        // Parse custom upload timestamps into standard date syntax
+                        const pubDateRaw = entry.getElementsByTagName("published")[0].textContent;
+                        const dateObj = new Date(pubDateRaw);
+                        const cleanDate = dateObj.toLocaleDateString(undefined, {month: 'short', day: 'numeric', year: 'numeric'});
+
+                        const highResThumbnail = "https://youtube.com" + videoId + "/mqdefault.jpg";
+
+                        const li = document.createElement("li");
+                        li.className = "video-item";
+                        li.setAttribute("id", "vid-" + videoId);
+                        li.onclick = function() { loadVideo(videoId); };
+                        li.innerHTML = `
+                            <div class="video-thumb" style="background-image: url('${highResThumbnail}');"></div>
+                            <div class="video-title">${title}</div>
+                            <div class="video-date">📅 ${cleanDate}</div>
+                        `;
+                        feedContainer.appendChild(li);
+                    }
+
+                    // Auto-load the freshest video entry from the top of the RSS payload
+                    const firstVideoId = entries[0].getElementsByTagName("yt:videoId")[0].textContent;
+                    loadVideo(firstVideoId);
+                })
+                .catch(error => {
+                    console.error(error);
+                    feedContainer.innerHTML = '<div class="no-video-msg">Failed to pull feed data. YouTube may be limiting requests to this local IP.</div>';
                 });
-            }
         }
 
-        function selectChannel(index) {
-            playChannel(index);
+        function loadVideo(videoId) {
+            document.querySelectorAll(".video-item").forEach(item => item.classList.remove("active"));
+            
+            const selectedItem = document.getElementById("vid-" + videoId);
+            if(selectedItem) selectedItem.classList.add("active");
+
+            // Embed-compliant structure to load individual clean streams securely
+            const player = document.getElementById("tv-player");
+            player.src = "https://youtube.com" + videoId + "?autoplay=1&modestbranding=1&rel=0";
         }
 
-        function changeChannel(direction) {
-            let newIndex = currentChannelIndex + direction;
-            if (newIndex >= tvChannels.length) newIndex = 0;
-            if (newIndex < 0) newIndex = tvChannels.length - 1;
-            playChannel(newIndex);
-        }
-
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowUp') { e.preventDefault(); changeChannel(-1); }
-            if (e.key === 'ArrowDown') { e.preventDefault(); changeChannel(1); }
-        });
+        // Initialize App on load
+        initApp();
     </script>
 </body>
 </html>
