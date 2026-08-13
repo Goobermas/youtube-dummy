@@ -87,7 +87,7 @@
             feedContainer.innerHTML = '<div class="loading-spinner">Connecting to YouTube Data Streams...</div>';
 
             // FIXED: Explicitly defined URL format string to prevent concatenation clipping
-            const targetUrl = "https://youtube.com" + uploadsId;
+            const targetUrl = "https://youtube.com/" + uploadsId;
 
             fetch(targetUrl)
                 .then(res => res.text())
@@ -114,7 +114,7 @@
                     videoList.forEach((video, i) => {
                         const videoId = video.videoId;
                         const title = video.title;
-                        const thumbnail = "https://youtube.com" + videoId + "/mqdefault.jpg";
+                        const thumbnail = "https://youtube.com/" + videoId + "/mqdefault.jpg";
 
                         const li = document.createElement("li");
                         li.className = "video-item";
@@ -145,7 +145,7 @@
             if (itemElement) itemElement.classList.add("active");
 
             const player = document.getElementById("tv-player");
-            player.src = "https://youtube.com" + videoId + "?autoplay=1&modestbranding=1&rel=0";
+            player.src = "https://youtube.com/" + videoId + "?autoplay=1&modestbranding=1&rel=0";
         }
 
         initApp();
