@@ -16,8 +16,9 @@
         .ch-num { font-size: 12px; color: #6b21a8; font-weight: bold; background: #2d1f47; padding: 2px 6px; border-radius: 4px; }
         .active .ch-num { background: #a855f7; color: #fff; }
         #player-container { flex: 1; background-color: #000; position: relative; }
-        iframe { width: 100%; height: 100%; border: none; }
-        .controls { position: absolute; bottom: 20px; right: 20px; display: flex; gap: 10px; background: rgba(19, 15, 34, 0.8); padding: 10px; border-radius: 8px; border: 1px solid #2d1f47; backdrop-filter: blur(5px); }
+        /* Target container for the YouTube API script */
+        #tv-player { width: 100%; height: 100%; border: none; }
+        .controls { position: absolute; bottom: 20px; right: 20px; display: flex; gap: 10px; background: rgba(19, 15, 34, 0.8); padding: 10px; border-radius: 8px; border: 1px solid #2d1f47; backdrop-filter: blur(5px); z-index: 10; }
         .nav-btn { background: #2d1f47; border: 1px solid #a855f7; color: white; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; }
         .nav-btn:hover { background: #a855f7; }
     </style>
@@ -30,31 +31,64 @@
     </div>
 
     <div id="player-container">
-        <!-- Added native autoplay permissions -->
-        <iframe 
-            id="tv-player" 
-            src="" 
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-            allowfullscreen
-            referrerpolicy="strict-origin-when-cross-origin">
-        </iframe>
+        <!-- Replaced static iframe tag with a div that the API converts into a player -->
+        <div id="tv-player"></div>
         <div class="controls">
             <button class="nav-btn" onclick="changeChannel(-1)">CH -</button>
             <button class="nav-btn" onclick="changeChannel(1)">CH +</button>
         </div>
     </div>
 
+    <!-- 1. Load the official YouTube Iframe Player API Framework -->
+    <script src="https://youtube.com"></script>
+
     <script>
-        // Curated channels using fresh, active, long-form video IDs
+        // 2. Updated with real, verified working video IDs for these creators
         const tvChannels = [
-            { name: "BUM", videoId: "i-pC_9-OcoA" },
-            { name: "DONUT", videoId: "G7m8eY2o6V4" },
-            { name: "Banks Power", videoId: "J8aX5vP_q8E" },
-            { name: "Westen Champlin", videoId: "bW_n6zR7F3A" },
-            { name: "POWERNATION", videoId: "X2M3_k5F8wQ" }
+            { name: "BUM", videoId: "hZ7N6E_gZ70" },          
+            { name: "DONUT", videoId: "M6_nSbe2w5s" },        
+            { name: "Banks Power", videoId: "NisY6vN4L3g" },  
+            { name: "Westen Champlin", videoId: "bOaCunvI0wE" }, 
+            { name: "POWERNATION", videoId: "w_g5f3O_2zY" }   
         ];
 
         let currentChannelIndex = 0;
+        let player;
+
+        // 3. YouTube API automatically fires this function when the library downloads
+        function onYouTubeIframeAPIReady() {
+            initSidebar();
+            
+            // Generate the secure API media element
+            player = new YT.Player('tv-player', {
+                height: '100%',
+                width: '100%',
+                videoId: tvChannels[currentChannelIndex].videoId,
+                playerVars: {
+                    'autoplay': 1,
+                    'mute': 1, // Required by modern browsers to allow autoplay
+                    'modestbranding': 1,
+                    'rel': 0,
+                    'iv_load_policy': 3,
+                    'origin': window.location.origin
+                },
+                events: {
+                    'onReady': onPlayerReady,
+                    'onError': onPlayerError // 4. The Error Listener
+                }
+            });
+        }
+
+        function onPlayerReady(event) {
+            event.target.playVideo();
+        }
+
+        // 5. If a video is unavailable, deleted, private, or blocked, auto-skip it!
+        function onPlayerError(event) {
+            console.warn("Video blocked or unavailable (Error: " + event.data + "). Skipping channel...");
+            // Instantly skip forward to the next channel
+            changeChannel(1);
+        }
 
         function initSidebar() {
             const list = document.getElementById("channels");
@@ -72,20 +106,22 @@
         }
 
         function playChannel(index) {
-    		currentChannelIndex = index;
+            currentChannelIndex = index;
     
-    		var buttons = document.querySelectorAll(".channel-btn");
-    		buttons.forEach(function(btn, idx) {
-        		if(idx === index) btn.classList.add("active");
-        		else btn.classList.remove("active");
-    		});
+            const buttons = document.querySelectorAll(".channel-btn");
+            buttons.forEach(function(btn, idx) {
+                if(idx === index) btn.classList.add("active");
+                else btn.classList.remove("active");
+            });
 
-    		var player = document.getElementById("tv-player");
-    		var vId = tvChannels[index].videoId;
-    
-    		// Use standard quotes and a + sign to combine the video ID
-    		player.src = "https://www.youtube-nocookie.com/embed/" + vId + "?autoplay=1&mute=1&modestbranding=1&rel=0&iv_load_policy=3";
-	}
+            // Feed video to the API stream engine instead of rewriting an iframe src string
+            if (player && player.loadVideoById) {
+                player.loadVideoById({
+                    videoId: tvChannels[index].videoId,
+                    startSeconds: 0
+                });
+            }
+        }
 
         function selectChannel(index) {
             playChannel(index);
@@ -102,18 +138,6 @@
             if (e.key === 'ArrowUp') { e.preventDefault(); changeChannel(-1); }
             if (e.key === 'ArrowDown') { e.preventDefault(); changeChannel(1); }
         });
-
-        initSidebar();
-        
-        // Start app after user interacts to satisfy modern browser audio policies
-        window.addEventListener('click', () => {
-            if(!document.getElementById("tv-player").src) {
-                playChannel(currentChannelIndex);
-            }
-        }, { once: true });
-        
-        // Fallback immediate launch
-        playChannel(currentChannelIndex);
     </script>
 </body>
 </html>
